@@ -93,8 +93,14 @@ class OrderService
     public function updateStatus(User $actor, int $id, string $status): Order
     {
         $order = $this->orders->findForUserOrFail($actor, $id);
+        $old = $order->status;
         $order->status = $status;
         $order->save();
+
+        if ($status === 'confirmed' && $old !== 'confirmed') {
+            event(new \App\Events\OrderConfirmed($order));
+        }
+
         return $order->fresh(['items.product']);
     }
 
