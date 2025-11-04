@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Product;
 
 use App\Models\Product;
-use App\Repositories\ProductRepository;
+use App\Repositories\Product\ProductRepository;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 class ProductService

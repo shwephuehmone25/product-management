@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Repositories;
+namespace App\Repositories\User;
 
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -22,4 +22,3 @@ class UserRepository
         return User::query()->orderByDesc('id')->paginate($perPage);
     }
 }
-
