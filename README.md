@@ -1,59 +1,222 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+## Product Management API (Laravel 12)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A secure REST API for managing products and orders with authentication and clean architecture.
 
-## About Laravel
+- Laravel Sanctum token authentication
+- Repository + Service layers
+- Custom Form Requests (validation)
+- Eloquent Resources (consistent JSON)
+- Soft deletes for Products and Orders
+- Transactional Order creation (auto totals)
+- Event + Listener + Mailable for order confirmation emails
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+---
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Setup
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+Prerequisites: PHP 8.2+, Composer, a database (PostgreSQL/MySQL/SQLite), and SMTP if you want real email delivery.
 
-## Learning Laravel
+1) Install dependencies
+- `composer install`
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+2) Configure environment
+- Copy `.env.example` → `.env`, set DB and mailer values
+- Generate key: `php artisan key:generate`
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+Example DB section
+```
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=your_database_name
+DB_USERNAME=your_database_username
+DB_PASSWORD=your_database_password
+```
 
-## Laravel Sponsors
+3) Migrate + seed
+- `php artisan migrate --seed`
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+Seeded accounts
+- Admin: `admin@example.com` / `password`
 
-### Premium Partners
+4) Run the app
+- `php artisan serve`
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+Emails (queued)
+- Start a worker: `php artisan queue:work --queue=notifications,default`
+- Dev shortcut: set `QUEUE_CONNECTION=sync` then `php artisan optimize:clear`
 
-## Contributing
+---
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Authentication
 
-## Code of Conduct
+All protected endpoints require a Bearer token from Sanctum.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+- Register: `POST /api/auth/register`
+- Login: `POST /api/auth/login`
+- Me: `GET /api/auth/me` (auth:sanctum)
+- Logout: `POST /api/auth/logout` (auth:sanctum)
 
-## Security Vulnerabilities
+Example (register)
+```
+POST /api/auth/register
+{
+  "name": "Admin",
+  "email": "admin@example.com",
+  "password": "password",
+  "password_confirmation": "password",
+  "role": "admin"
+}
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Response 201
+```
+{
+  "message": "Registered successfully",
+  "data": {
+    "user": { "id": 1, "name": "Admin", "email": "admin@example.com", "role": "admin" },
+    "token": "<personal-access-token>"
+  }
+}
+```
 
-## License
+---
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## Users
+
+- List (paginated): `GET /api/users` (auth:sanctum)
+
+---
+
+## Products
+
+- List (filters + pagination): `GET /api/products`
+  - Filters: `q`, `name`, `sku`, `min_price`, `max_price`, `min_stock`, `max_stock`, `date_from`, `date_to`
+  - Sorting: `sort` in `id|name|price|stock|created_at`, `direction` in `asc|desc`
+  - Admin-only: `with_trashed`, `only_trashed`
+- Create: `POST /api/products` (admin)
+- Update: `PUT /api/products/{product}` (admin)
+
+Example (list)
+```
+GET /api/products?q=shirt&min_price=10&max_price=50&sort=price&direction=asc&per_page=10
+```
+
+Response 200
+```
+{
+  "data": [
+    {"id": 3, "name": "Blue Shirt", "sku": "SKU-1234", "price": "19.99", "stock": 50},
+    {"id": 5, "name": "Green Shirt", "sku": "SKU-7777", "price": "25.00", "stock": 34}
+  ],
+  "meta": { "current_page": 1, "per_page": 10, "total": 24, "last_page": 3 }
+}
+```
+
+Example (create)
+```
+POST /api/products
+{
+  "name": "T-Shirt",
+  "sku": "TS-001",
+  "price": 19.99,
+  "stock": 100
+}
+```
+
+Response 201
+```
+{
+  "message": "Product created successfully",
+  "data": {"id": 21, "name": "T-Shirt", "sku": "TS-001", "price": "19.99", "stock": 100}
+}
+```
+
+---
+
+## Orders
+
+- List: `GET /api/orders` (auth:sanctum)
+  - Admin sees all; customers see their own
+- Create: `POST /api/orders` (auth:sanctum)
+  - Body: `{ "status": "pending|confirmed|cancelled", "items": [{"product_id":1, "quantity":2}, ...] }`
+  - Each item subtotal = product price × quantity; order `total_amount` auto-calculated
+- Show: `GET /api/orders/{id}` (auth:sanctum)
+- Update status: `PUT /api/orders/{id}/status` (admin)
+
+Example (create)
+```
+POST /api/orders
+{
+  "status": "pending",
+  "items": [
+    {"product_id": 1, "quantity": 2},
+    {"product_id": 3, "quantity": 1}
+  ]
+}
+```
+
+Response 201
+```
+{
+  "message": "Order created successfully",
+  "data": {
+    "id": 10,
+    "user_id": 5,
+    "status": "pending",
+    "total_amount": "149.97",
+    "items": [
+      {"id": 31, "product_id": 1, "quantity": 2, "price": "49.99", "subtotal": "99.98", "product": {"id": 1, "name": "Blue Shirt", "sku": "SKU-1234", "price": "49.99"}},
+      {"id": 32, "product_id": 3, "quantity": 1, "price": "49.99", "subtotal": "49.99", "product": {"id": 3, "name": "Pants", "sku": "SKU-5678", "price": "49.99"}}
+    ]
+  }
+}
+```
+
+Example (update status — admin)
+```
+PUT /api/orders/10/status
+{
+  "status": "confirmed"
+}
+```
+
+Response 200
+```
+{
+  "message": "Order status updated successfully",
+  "data": {"id": 10, "status": "confirmed", "total_amount": "149.97"}
+}
+```
+
+Emails
+- On status change to `confirmed`, an email is queued and rendered with `resources/views/mail/order/confirmed.blade.php`.
+- Configure SMTP in `.env` and run a queue worker to deliver.
+
+---
+
+## Error Handling
+
+- All `/api/*` routes respond with JSON, including validation errors.
+- Common statuses: `401` unauthenticated, `403` forbidden, `404` not found, `409` database error, `422` validation.
+
+---
+
+## Assumptions
+
+- Roles: `admin` and `customer`; only admins can create/update products and confirm order status.
+- Tokens are issued via Sanctum personal access tokens.
+- Money values are serialized as strings to avoid FP rounding errors.
+- Soft deletes for Products and Orders; OrderItems keep links to soft-deleted Products for history.
+- Stock reservation/deduction is not implemented.
+- Email is via SMTP; no database notifications.
+
+---
+
+## Quick Start
+
+- `php artisan migrate --seed`
+- `php artisan serve`
+
+Optional (email via queues): `php artisan queue:work --queue=notifications,default`
+
