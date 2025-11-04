@@ -23,10 +23,26 @@ class ProductController extends Controller
         $perPage = (int) $request->query('per_page', 15);
         $perPage = $perPage > 0 ? min($perPage, 100) : 15;
 
-        $paginator = $this->products->list($perPage);
+        $filters = [
+            'q' => $request->query('q'),
+            'name' => $request->query('name'),
+            'sku' => $request->query('sku'),
+            'min_price' => $request->query('min_price'),
+            'max_price' => $request->query('max_price'),
+            'min_stock' => $request->query('min_stock'),
+            'max_stock' => $request->query('max_stock'),
+            'date_from' => $request->query('date_from'),
+            'date_to' => $request->query('date_to'),
+            'sort' => $request->query('sort'),
+            'direction' => $request->query('direction'),
+            'with_trashed' => $request->query('with_trashed'),
+            'only_trashed' => $request->query('only_trashed'),
+        ];
+
+        $paginator = $this->products->list($request->user(), $perPage, $filters);
 
         return response()->json([
-            'data' => ProductResource::collection($paginator->items()),
+            'data' => ProductResource::collection($paginator->getCollection()),
             'meta' => [
                 'current_page' => $paginator->currentPage(),
                 'per_page' => $paginator->perPage(),

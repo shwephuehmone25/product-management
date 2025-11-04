@@ -5,6 +5,7 @@ namespace App\Services\Product;
 use App\Models\Product;
 use App\Repositories\Product\ProductRepository;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use App\Models\User;
 
 class ProductService
 {
@@ -12,9 +13,17 @@ class ProductService
     {
     }
 
-    public function list(int $perPage = 15): LengthAwarePaginator
+    public function list(User $actor, int $perPage = 15, array $filters = []): LengthAwarePaginator
     {
-        return $this->products->paginate($perPage);
+        $withTrashed = false;
+        $onlyTrashed = false;
+
+        if (($actor->role ?? null) === 'admin') {
+            $withTrashed = filter_var($filters['with_trashed'] ?? false, FILTER_VALIDATE_BOOLEAN);
+            $onlyTrashed = filter_var($filters['only_trashed'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        }
+
+        return $this->products->paginate($filters, $perPage, $withTrashed, $onlyTrashed);
     }
 
     public function get(int $id): Product
