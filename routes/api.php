@@ -25,7 +25,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Orders
     Route::get('orders', [OrderController::class, 'index']);
-    Route::post('orders', [OrderController::class, 'store']);
+    Route::post('orders', [OrderController::class, 'store'])->middleware('is.customer');
     Route::get('orders/{id}', [OrderController::class, 'show']);
     // Admin-only status update
     Route::put('orders/{id}/status', [OrderController::class, 'updateStatus'])->middleware('is.admin');
